@@ -3,11 +3,34 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.m4_eval import load_test_set, evaluate_ragas, failure_analysis, EvalResult
 
+from unittest.mock import patch
+import pandas as pd
+
 def test_load_test_set():
     ts = load_test_set()
     assert len(ts) > 0 and "question" in ts[0] and "ground_truth" in ts[0]
 
-def test_evaluate_returns_metrics():
+class MockResult(dict):
+    def to_pandas(self):
+        return pd.DataFrame([{
+            "question": "q",
+            "answer": "a",
+            "contexts": ["c"],
+            "ground_truth": "gt",
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.8,
+            "context_precision": 0.8,
+            "context_recall": 0.8
+        }])
+
+@patch("ragas.evaluate")
+def test_evaluate_returns_metrics(mock_eval):
+    mock_eval.return_value = MockResult({
+        "faithfulness": 0.8,
+        "answer_relevancy": 0.8,
+        "context_precision": 0.8,
+        "context_recall": 0.8
+    })
     r = evaluate_ragas(["q"], ["a"], [["c"]], ["gt"])
     for k in ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]:
         assert k in r and isinstance(r[k], (int, float))

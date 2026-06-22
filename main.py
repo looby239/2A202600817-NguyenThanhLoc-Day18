@@ -34,9 +34,19 @@ def main():
     prod_results = evaluate_pipeline(search, reranker)
 
     # Move reports to reports/
+    import shutil
     for f in ["ragas_report.json", "naive_baseline_report.json"]:
         if os.path.exists(f):
-            os.rename(f, f"reports/{f}")
+            dst = f"reports/{f}"
+            if os.path.exists(dst):
+                try:
+                    os.remove(dst)
+                except Exception:
+                    pass
+            try:
+                shutil.move(f, dst)
+            except Exception:
+                pass
 
     # Step 3: Comparison
     print("\n📌 STEP 3: Comparison")

@@ -1,13 +1,13 @@
-# Lab 18: Production RAG — Source modules
 import os
-os.environ["RAGAS_DO_NOT_TRACK"] = "True"
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
 import sys
 import asyncio
 import socket
 import threading
+
+# Set environment variables as early as possible
+os.environ["RAGAS_DO_NOT_TRACK"] = "True"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 if sys.platform == "win32":
     try:
@@ -24,14 +24,13 @@ except Exception:
         (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('162.159.140.245', 443))
     ]
 
-# Thread-safe monkey patch for socket/_socket getaddrinfo to bypass native DNS resolutions
+# Thread-safe lock wrapper around _socket.getaddrinfo to prevent concurrent Windows socket resolution crashes
 import _socket
 _original_getaddrinfo = _socket.getaddrinfo
 _getaddrinfo_lock = threading.Lock()
 
 def _locked_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    # Print resolution trace for transparency
-    print(f"  [getaddrinfo] Bypassing native resolve for: {host}:{port}", flush=True)
+    print(f"  [getaddrinfo] (tests) Bypassing native resolve for: {host}:{port}", flush=True)
     
     if host == 'api.openai.com':
         res = []
@@ -45,11 +44,9 @@ def _locked_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
             (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('127.0.0.1', port))
         ]
         
-    # Fallback to lock-secured original getaddrinfo for other hosts
     with _getaddrinfo_lock:
         return _original_getaddrinfo(host, port, family, type, proto, flags)
 
 _socket.getaddrinfo = _locked_getaddrinfo
 socket.getaddrinfo = _locked_getaddrinfo
-
-import sentence_transformers
+print("CONFTEST: Thread-safe _socket.getaddrinfo bypass initialized.", flush=True)
